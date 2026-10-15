@@ -1,82 +1,88 @@
-import streamlit as st
-import numpy as np
-import pandas as pd
-import joblib
+"""Streamlit interface for the mobile price regression model in the notebook."""
+
+import os
 from pathlib import Path
 
+import joblib
+import pandas as pd
+import streamlit as st
 
-st.set_page_config(page_title="Mobile Price Predictor", page_icon="📱")
 
-MODEL_PATH = Path("mobile_price_model.pkl")
+# Defaults to the model saved from the user's notebook. Override this with the
+# MOBILE_PRICE_MODEL environment variable if the file is in another location.
+MODEL_PATH = Path(
+    os.environ.get(
+        "MOBILE_PRICE_MODEL",
+        r"C:\Users\lenovo\Downloads\mobile_price_prediction.pkl",
+    )
+)
+
 
 @st.cache_resource
-def load_model():
-    return joblib.load(MODEL_PATH)
+def load_model(model_path: str):
+    """Load the fitted LinearRegression model once per Streamlit session."""
+    return joblib.load(model_path)
 
+
+st.set_page_config(page_title="Mobile Price Prediction", page_icon="📱")
 st.title("📱 Mobile Price Prediction")
-st.write("Phone ki specifications enter karke estimated price dekhein.")
+st.write(
+    "Enter the phone's storage and RAM. The fitted regression model will "
+    "estimate its price."
+)
 
-if not MODEL_PATH.exists():
-    st.error(f"Model file nahi mili: {MODEL_PATH}")
-    st.info("Trained model ko `mobile_price_model.pkl` naam se app.py ke folder mein rakhein.")
+if not MODEL_PATH.is_file():
+    st.error(f"Model file not found: {MODEL_PATH}")
+    st.caption(
+        "Save mobile_price_prediction.pkl at that location, or set the "
+        "MOBILE_PRICE_MODEL environment variable to its full path."
+    )
     st.stop()
 
 try:
-    model = load_model()
-except Exception as error:
-    st.error(f"Model load nahi ho saka: {error}")
+    model = load_model(str(MODEL_PATH))
+except Exception as exc:
+    st.error("Could not load the model file.")
+    st.exception(exc)
     st.stop()
 
-# Model ke feature names available hon to unhe use karein.
-feature_names = getattr(model, "feature_names_in_", None)
-if feature_names is None:
-    feature_names = [
-        "ram_gb",
-        "storage_gb",
-        "battery_mah",
-        "camera_mp",
-        "screen_inches",
-    ]
+with st.form("mobile_specs"):
+    storage_col, ram_col = st.columns(2)
+    with storage_col:
+        storage = st.number_input(
+            "Storage",
+            min_value=0.0,
+            value=256.0,
+            step=1.0,
+            help="Enter the storage value using the same unit as the training data.",
+        )
+    with ram_col:
+        ram = st.number_input(
+            "RAM",
+            min_value=0.0,
+            value=64.0,
+            step=1.0,
+            help="Enter the RAM value using the same unit as the training data.",
+        )
 
-st.subheader("Phone specifications")
+    submitted = st.form_submit_button("Predict price", type="primary")
 
-col1, col2 = st.columns(2)
-
-with col1:
-    ram = st.number_input("RAM (GB)", min_value=1, max_value=32, value=8)
-    storage = st.number_input("Storage (GB)", min_value=8, max_value=2048, value=128)
-    battery = st.number_input("Battery (mAh)", min_value=1000, max_value=10000, value=5000)
-
-with col2:
-    camera = st.number_input("Main camera (MP)", min_value=2, max_value=250, value=50)
-    screen = st.number_input(
-        "Screen size (inches)", min_value=4.0, max_value=8.0, value=6.5, step=0.1
-    )
-
-if st.button("Price predict karein", type="primary"):
-    # Input names aur training data ke column names match hone chahiye.
-    values = {
-        "ram_gb": ram,
-        "storage_gb": storage,
-        "battery_mah": battery,
-        "camera_mp": camera,
-        "screen_inches": screen,
-    }
+if submitted:
+    # Match the notebook's feature names and order exactly: x = df[['storage', 'RAM']].
+    input_data = pd.DataFrame({"storage": [storage], "RAM": [ram]})
 
     try:
-        input_df = pd.DataFrame(
-            [[values[name] for name in feature_names]],
-            columns=feature_names,
+        predicted_price = float(model.predict(input_data)[0])
+    except Exception as exc:
+        st.error(
+            "Prediction failed. Confirm that the selected model was trained "
+            "with the `storage` and `RAM` columns, in that order."
         )
-        prediction = model.predict(input_df)[0]
+        st.exception(exc)
+        st.stop()
 
-        # Numeric output ko rupees mein dikhayein; text/category ko seedha dikhayein.
-        if isinstance(prediction, (int, float, np.integer, np.floating)):
-            st.success(f"Estimated mobile price: ₹{prediction:,.0f}")
-        else:
-            st.success(f"Predicted price category: {prediction}")
-
-    except KeyError as error:
-        st.error(f"Model ka feature app ke inputs se match nahi hua: {error}")
-    except Exception as error:
-        st.error(f"Prediction nahi ho saki: {error}")
+    st.metric("Predicted price", f"{predicted_price:,.2f}")
+    st.caption(
+        "The result uses the same unit and currency as the notebook's `Price` column. "
+        "Predictions are most reliable within the storage and RAM values used to train the model."
+    )
