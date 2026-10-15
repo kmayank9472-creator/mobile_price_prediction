@@ -7,7 +7,7 @@ from pathlib import Path
 
 st.set_page_config(page_title="Mobile Price Predictor", page_icon="📱")
 
-MODEL_PATH = Path("mobile_price_model.joblib")
+MODEL_PATH = Path("mobile_price_model.pkl")
 
 @st.cache_resource
 def load_model():
