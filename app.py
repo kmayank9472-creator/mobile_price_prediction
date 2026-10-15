@@ -13,7 +13,7 @@ import streamlit as st
 MODEL_PATH = Path(
     os.environ.get(
         "MOBILE_PRICE_MODEL",
-        r"mobile_price_prediction.pkl",
+        r"mobile_price_prediction(3).pkl",
     )
 )
 
