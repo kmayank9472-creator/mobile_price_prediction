@@ -7,18 +7,18 @@ from pathlib import Path
 
 st.set_page_config(page_title="Mobile Price Predictor", page_icon="📱")
 
-MODEL_PATH = Path("mobile_price_model.joblib")
+MODEL_PATH = Path("mobile_price_model.pkl")
 
 @st.cache_resource
 def load_model():
-    return joblib.load(MODEL_PATH)
+    return pkl.load(MODEL_PATH)
 
 st.title("📱 Mobile Price Prediction")
 st.write("Phone ki specifications enter karke estimated price dekhein.")
 
 if not MODEL_PATH.exists():
     st.error(f"Model file nahi mili: {MODEL_PATH}")
-    st.info("Trained model ko `mobile_price_model.joblib` naam se app.py ke folder mein rakhein.")
+    st.info("Trained model ko `mobile_price_model.pkl` naam se app.py ke folder mein rakhein.")
     st.stop()
 
 try:
