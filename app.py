@@ -7,11 +7,11 @@ from pathlib import Path
 
 st.set_page_config(page_title="Mobile Price Predictor", page_icon="📱")
 
-MODEL_PATH = Path("mobile_price_model.pkl")
+MODEL_PATH = Path("mobile_price_model.joblib")
 
 @st.cache_resource
 def load_model():
-    return pkl.load(MODEL_PATH)
+    return joblib.load(MODEL_PATH)
 
 st.title("📱 Mobile Price Prediction")
 st.write("Phone ki specifications enter karke estimated price dekhein.")
