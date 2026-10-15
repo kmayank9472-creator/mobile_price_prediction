@@ -1,4 +1,4 @@
-stremlit 
+streamlit
 matplotlib 
 pamdas 
 scikit-learn 
